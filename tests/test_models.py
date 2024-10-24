@@ -51,7 +51,6 @@ def test_available_positions_updates_with_2_pieces() -> None:
         (0,2))
     
     available_positions = game_state.get_available_positions()
-    print(available_positions)
     assert len(available_positions) == 8
     assert available_positions == set([
         (0,4), (1,3), (1, 1), (-1, 1), (-1, 3),
@@ -94,7 +93,72 @@ def test_border_tile_constraint() -> None:
             Tile([True, False, False, True, False, False], 0), 
             (0,-2)) # Should raise an exception because top marker does not align
         
+def test_rotational_equals() -> None:
+    tile = Tile([True, False, False, False, False, False], 0)
+    rotationally_equal_tiles = [tile.rotate(n) for n in range(1,6)]
+    not_equal_tile = Tile([True, True, False, False, False, False], 0)
 
-# Test for popping condition
-# Test for trying to push into enclosed area
-# Test that available positions does not include popped element
+    assert all([tile.is_rotationally_equal(t) for t in rotationally_equal_tiles])
+    assert tile.is_rotationally_equal(not_equal_tile) == False
+
+def test_single_pop() -> None:
+    game_state = GameState()
+    center_tile = Tile([True, True, True, True, True, True], 0)
+    assert game_state.place_tile(
+        center_tile, 
+        (0,0)) == []
+
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,2)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (1,1)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (1,-1)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,-2)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (-1,-1)) == []
+    
+    # Place the last tile, that pops the center
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (-1,1)) == [(0,0)]
+    
+    assert (0,0) not in game_state.available_positions
+
+
+def test_single_pop() -> None:
+    game_state = GameState()
+    center_tile = Tile([True, True, True, True, True, True], 0)
+    
+    assert game_state.place_tile(
+            center_tile, 
+            (0,0)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,2)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (1,1)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (1,-1)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,-2)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (-1,-1)) == []
+    assert game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (-1,1)) == [(0,0)]
+    
+    with pytest.raises(Exception):
+        game_state.place_tile(
+            center_tile, 
+            (0,0))

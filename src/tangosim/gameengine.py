@@ -1,4 +1,4 @@
-from typing import Set, Tuple
+from typing import Set, Tuple, List
 from models import GameState, Tile
 from strategy import Strategy
 
@@ -54,10 +54,15 @@ class SimpleTangoGame:
                 [t for t in available_tiles if not t.is_rotationally_equal(tile_to_place)])
 
             while(len(surrounded_tiles)):
-                strategy.pick
-            if possible_popped_tile:
-                self.player_tiles[possible_popped_tile.color].add(possible_popped_tile)
+                location_to_pop = strategy.pick_piece_to_pop(self.gamestate, 
+                                                             self.player_tiles[active_player_idx], 
+                                                             surrounded_tiles)
+                popped_tile = self.gamestate.pop_piece(location_to_pop)
+                surrounded_tiles.remove(location_to_pop)
+                self.player_tiles[popped_tile.color].add(popped_tile)
 
+                surrounded_tiles = [t for t in surrounded_tiles if self.gamestate.is_surrounded(t)]
+                
         return (self.gamestate, active_player_idx)
         
     def is_game_over(self, whose_turn:int) -> bool:

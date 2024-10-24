@@ -31,14 +31,7 @@ class Tile:
         
         return False
 
-class GameState:
-
-    def __init__(self):
-        self.available_positions = set()
-        self.available_positions.add((0,0))
-        self.tiles = dict()
-
-    def _get_bordering_positions(position:Tuple[int, int]) -> List[Tuple[int, int]]:
+def get_bordering_positions(position:Tuple[int, int]) -> List[Tuple[int, int]]:
         return [
                     (position[0], position[1]+2),
                     (position[0]+1, position[1]+1),
@@ -47,10 +40,16 @@ class GameState:
                     (position[0]-1, position[1]-1),
                     (position[0]-1, position[1]+1),
                 ]
+class GameState:
+
+    def __init__(self):
+        self.available_positions = set()
+        self.available_positions.add((0,0))
+        self.tiles = dict()
 
     def find_conflicting_tile_position(self, tile:Tile, position:Tuple[int, int]) -> Tuple[int, Tile]:
         # Returns tuple of (edge index, conflicting tile) if there is a conflict, None otherwise
-        bordering_positions = GameState._get_bordering_positions(position)
+        bordering_positions = get_bordering_positions(position)
         
         bordering_occupied_positions_mask = [
             (1 if p in self.tiles else 0 ) for p in bordering_positions
@@ -66,9 +65,9 @@ class GameState:
                 return idx, border_tile
         
         return None
-
-    def place_tile(self, tile:Tile, position:Tuple[int, int]) -> Tile:
-        # Places the tile and returns a Tile if (and only if) it is popped
+ 
+    def place_tile(self, tile:Tile, position:Tuple[int, int]) -> List[Tuple[int, int]]:
+        # Places the tile and returns list of positions that are surrounded
         # Check if spot is free and connected
         if position not in self.available_positions:
             raise Exception(f"Position {position} not in available positions: {self.available_positions}")
@@ -77,7 +76,7 @@ class GameState:
             raise Exception(f"Tile already placed at {position}")
 
         # Check if bordering tiles satisfy tile marker constraint
-        bordering_positions = GameState._get_bordering_positions(position)
+        bordering_positions = get_bordering_positions(position)
         
         possible_conflict = self.find_conflicting_tile_position(tile, position)
         if possible_conflict != None:
@@ -95,17 +94,25 @@ class GameState:
         available_bordering_positions = \
             [p for p in bordering_positions if p not in self.tiles]
 
-        # TODO Check for popping condition
-        popped_piece = None
+        # Check for popping condition
+        surrounded_positions = []
         for adj_position in bordering_positions:
             if adj_position in self.tiles:
-                adj_bordering_positions = GameState._get_bordering_positions(position)
-                if all([p in self.tiles for p in adj_bordering_positions]):
-                    popped_piece = self.tiles.pop(adj_position)
+                if self.is_surrounded(adj_position):
+                    surrounded_positions.append(adj_position)
 
-        
         self.available_positions.update(available_bordering_positions)
-        return popped_piece    
+        return surrounded_positions    
+
+    def is_surrounded(self, position:Tuple[int, int]) -> bool:
+        bordering_positions = get_bordering_positions(position)
+        return all([p in self.tiles for p in bordering_positions])
+
+    def pop_piece(self, position:Tuple[int, int]) -> Tile:
+        if position not in self.tiles:
+            raise Exception(f"Attempting to pop a location that has no tile:{position}")
+        
+        return self.tiles.pop(position)
 
     def get_available_positions(self) -> Set[Tuple[int, int]]:
         return self.available_positions
