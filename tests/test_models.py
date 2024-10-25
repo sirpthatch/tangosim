@@ -162,3 +162,38 @@ def test_single_pop() -> None:
         game_state.place_tile(
             center_tile, 
             (0,0))
+
+def test_one_point_score() -> None:
+    game_state = GameState()
+    center_tile = Tile([True, True, True, True, True, True], 0)
+    
+    game_state.place_tile(
+            center_tile, 
+            (0,0)) 
+    game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,2))
+    
+    assert game_state.get_scores() == [1,0]
+
+def test_multi_point_score() -> None:
+    game_state = GameState()
+    center_tile = Tile([True, True, True, True, True, True], 0)
+    
+    game_state.place_tile(
+            center_tile, 
+            (0,0)) 
+    game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,2))
+    game_state.place_tile(
+        Tile([True, True, True, True, True, True], 1), 
+        (1,1))
+    game_state.place_tile(
+        Tile([True, True, True, True, True, True], 1), 
+        (1,-1))
+    game_state.place_tile(
+        Tile([True, True, True, True, True, True], 0), 
+        (0,-2))
+    
+    assert game_state.get_scores() == [2,1]

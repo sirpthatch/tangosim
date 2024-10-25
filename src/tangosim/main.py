@@ -1,13 +1,17 @@
-from models import Tile
-
-def init_game_pieces() -> List[Tile]:
-    for num_ticks in range(1, 6):
-        print(num_ticks)
+import sys
+#sys.path.append("/home/thatcher/dev/tangosim/src/")
+from tangosim.models import Tile
+from tangosim.strategy import GreedyStrategy
+from tangosim.gameengine import SimpleTangoGame
 
 def main() -> None:
-    player1_pieces = init_game_pieces()
-    print("hello world")
-    pass
+    player1_strategy = GreedyStrategy(0)
+    player2_strategy = GreedyStrategy(1)
+
+    game = SimpleTangoGame([player1_strategy, player2_strategy])
+    (game_state, last_player) = game.play()
+    scores = game_state.get_scores()
+    print(f"Score is {scores}")
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 from typing import Set, Tuple, List
-from models import GameState, Tile
-from strategy import Strategy
+from tangosim.models import GameState, Tile
+from tangosim.strategy import Strategy
 
 
 class SimpleTangoGame:
@@ -22,24 +22,24 @@ class SimpleTangoGame:
             [False, True, False, True, True, True],
             [False, True, True, False, True, True],
 
-            [True, True, True, True, True, False]
+            [True, True, True, True, True, False],
             [True, True, True, True, True, True]
         ]
         return set([Tile(p, color) for p in possible_tile_configurations])
 
-    def __init__(self, players:List[Strategy]):
+    def __init__(self, players:List[Strategy], player_tiles:List[Set[Tile]] = None):
         self.players = players
-        self.player_tiles = [SimpleTangoGame._init_gamepieces(n) for n in range(0, len(players))]
+        self.player_tiles = player_tiles if player_tiles else [SimpleTangoGame._init_gamepieces(n) for n in range(0, len(players))]
         
         self.gamestate = GameState()
 
     def play(self) -> Tuple[GameState, int]:
         # Plays the game to the end, and returns the game state and the winning color
-        round = 0
+        round = -1
         active_player_idx = 0
         while(True):
             round += 1
-            active_player_idx = round & len(self.players)
+            active_player_idx = round % len(self.players)
 
             if self.is_game_over(active_player_idx):
                 break

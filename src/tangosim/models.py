@@ -1,13 +1,17 @@
 from typing import List, Tuple, Dict, Set
+import itertools
 
 def get_marker_idx(position: int) -> int:
     return (position + 3) % 6
 
+    
 class Tile:
-
+    inc_id = itertools.count()
     def __init__(self, 
                  pattern: List[bool], 
-                 color:int) -> None:
+                 color:int,
+                 index = None) -> None:
+        self.id = index if index else next(Tile.inc_id)
         self.pattern = pattern
         self.color = color
 
@@ -18,7 +22,7 @@ class Tile:
         return count
     
     def rotate(self, steps=1):
-        return Tile(self.pattern[-steps:]+self.pattern[:-steps], self.color)
+        return Tile(self.pattern[-steps:]+self.pattern[:-steps], self.color, self.id)
     
     def is_rotationally_equal(self, tile:'Tile') -> bool:
         if tile.color != self.color:
@@ -42,7 +46,8 @@ def get_bordering_positions(position:Tuple[int, int]) -> List[Tuple[int, int]]:
                 ]
 class GameState:
 
-    def __init__(self):
+    def __init__(self, num_players=2):
+        self.num_players = num_players
         self.available_positions = set()
         self.available_positions.add((0,0))
         self.tiles = dict()
@@ -92,7 +97,7 @@ class GameState:
         self.available_positions.remove(position)
 
         available_bordering_positions = \
-            [p for p in bordering_positions if p not in self.tiles]
+            [p for p in bordering_positions if p not in self.tiles and not(all(q in self.tiles for q in get_bordering_positions(p)))]
 
         # Check for popping condition
         surrounded_positions = []
@@ -119,3 +124,35 @@ class GameState:
     
     def get_tiles(self) -> Dict[Tuple[int, int], Tile]:
         return self.tiles
+    
+    def get_scores(self) -> List[int]:
+        scored_pairs = set()
+        scores = [0]*self.num_players
+        for position, tile in self.tiles.items():
+            bordering_positions = get_bordering_positions(position)
+            for rot_idx in range(0, len(bordering_positions)):
+                if bordering_positions[rot_idx] in self.tiles:
+                    paired_tile = self.tiles[bordering_positions[rot_idx]]
+                    if tile.pattern[rot_idx] and tile.color == paired_tile.color:
+                        scoring_pair = tuple(sorted([tile.id, paired_tile.id]))
+                        if scoring_pair not in scored_pairs:
+                            scores[tile.color] += 1
+                            scored_pairs.add(scoring_pair)
+        return scores
+
+    def score_potential_move(self, tile:Tile, position:Tuple[int, int]) -> int:
+        if position not in self.available_positions:
+            return None
+        
+        score = 0
+        bordering_positions = get_bordering_positions(position)
+        for rot_idx in range(0, len(bordering_positions)):
+            if bordering_positions[rot_idx] in self.tiles:
+                paired_tile = self.tiles[bordering_positions[rot_idx]]
+                if tile.pattern[rot_idx] != paired_tile.pattern[get_marker_idx(rot_idx)]:
+                    return None
+                
+                if tile.pattern[rot_idx] and tile.color == paired_tile.color:
+                    score += 1
+                
+        return score
