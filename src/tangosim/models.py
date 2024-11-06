@@ -99,6 +99,10 @@ class GameState:
         available_bordering_positions = \
             [p for p in bordering_positions if p not in self.tiles and not(all(q in self.tiles for q in get_bordering_positions(p)))]
 
+        self.available_positions.update(available_bordering_positions)
+        enclosed_positions = [x for x in self.available_positions if self.is_surrounded(x)]
+        list(map(self.available_positions.remove, enclosed_positions))
+
         # Check for popping condition
         surrounded_positions = []
         for adj_position in bordering_positions:
@@ -106,7 +110,6 @@ class GameState:
                 if self.is_surrounded(adj_position):
                     surrounded_positions.append(adj_position)
 
-        self.available_positions.update(available_bordering_positions)
         return surrounded_positions    
 
     def is_surrounded(self, position:Tuple[int, int]) -> bool:
@@ -154,5 +157,38 @@ class GameState:
                 
                 if tile.pattern[rot_idx] and tile.color == paired_tile.color:
                     score += 1
-                
+        
+        pops = self.check_and_score_pops(tile, position)
+        if len(pops):
+            max_pop_score = max([y for (_,y) in pops])
+            score += max_pop_score
+        return score
+    
+    def check_and_score_pops(self, tile:Tile, position:Tuple[int, int]) -> List[Tuple[Tuple[int, int], int]]:
+        """Returns a list of (location, score) for pops that could happen if placing 
+           tile at position
+        """
+        bordering_positions = get_bordering_positions(position)
+        pops = list()
+        for adj_position in bordering_positions:
+            adj_bordering_positions = get_bordering_positions(adj_position)
+            adj_bordering_positions.append(position)
+            is_popped = all([p in self.tiles for p in adj_bordering_positions])
+            if is_popped:
+                score = self.score_pop(adj_position, tile.color)
+                pops.append((adj_position, score))
+        return pops
+    
+    def score_pop(self, position:Tuple[int, int], color:int) -> int:
+        """Returns the score for player 'color' for popping position 'position'"""
+        popped_tile = self.tiles[position]
+        bordering_positions = get_bordering_positions(position)
+        score = 0
+        for rot_idx in range(0, len(bordering_positions)):
+            border_tile = self.tiles[bordering_positions[rot_idx]]
+            if popped_tile.pattern[rot_idx] and popped_tile.color == border_tile.color:
+                if border_tile.color == color:
+                    score -= 1
+                else:
+                    score += 1
         return score

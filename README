@@ -1,5 +1,11 @@
 TODO:
 * Tests - for simple tango game
-* Main runner script
+* Rotational coordinate systems
+* Simulation results
+* (x) Pop tile scoring and incorporate into greedy strategy
+* Tests for popping dynamics - scoring and multipop in particular
+* Defensive strategy
+* Weighted tile value strategy
+* Game diagnostics
 * ...debugging... 
 * Docs

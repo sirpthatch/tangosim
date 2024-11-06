@@ -1,11 +1,11 @@
 import sys
 #sys.path.append("/home/thatcher/dev/tangosim/src/")
 from tangosim.models import Tile
-from tangosim.strategy import GreedyStrategy
+from tangosim.strategy import GreedyStrategy, RandomStrategy
 from tangosim.gameengine import SimpleTangoGame
 
 def main() -> None:
-    player1_strategy = GreedyStrategy(0)
+    player1_strategy = RandomStrategy(0)
     player2_strategy = GreedyStrategy(1)
 
     game = SimpleTangoGame([player1_strategy, player2_strategy])

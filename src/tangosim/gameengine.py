@@ -54,9 +54,11 @@ class SimpleTangoGame:
                 [t for t in available_tiles if not t.is_rotationally_equal(tile_to_place)])
 
             while(len(surrounded_tiles)):
+                print(f"Surrounded Tiles: {surrounded_tiles}")
                 location_to_pop = strategy.pick_piece_to_pop(self.gamestate, 
                                                              self.player_tiles[active_player_idx], 
                                                              surrounded_tiles)
+                print(f"Chose location: {location_to_pop}")
                 popped_tile = self.gamestate.pop_piece(location_to_pop)
                 surrounded_tiles.remove(location_to_pop)
                 self.player_tiles[popped_tile.color].add(popped_tile)
