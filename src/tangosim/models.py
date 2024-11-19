@@ -1,16 +1,20 @@
 from typing import List, Tuple, Dict, Set
 import itertools
 
+## Some Notes:
+## * Tile positions are using an axial coordinate system, defined here: https://www.redblobgames.com/grids/hexagons/#coordinates
+
 def get_marker_idx(position: int) -> int:
     return (position + 3) % 6
-
     
 class Tile:
     inc_id = itertools.count()
     def __init__(self, 
-                 pattern: List[bool], 
+                 pattern: List[bool], # 6 sides rotating clockwise from top, true if colored
                  color:int,
                  index = None) -> None:
+        assert len(pattern) == 6
+
         self.id = index if index else next(Tile.inc_id)
         self.pattern = pattern
         self.color = color
@@ -37,13 +41,22 @@ class Tile:
 
 def get_bordering_positions(position:Tuple[int, int]) -> List[Tuple[int, int]]:
         return [
-                    (position[0], position[1]+2),
-                    (position[0]+1, position[1]+1),
-                    (position[0]+1, position[1]-1),
-                    (position[0], position[1]-2),
-                    (position[0]-1, position[1]-1),
-                    (position[0]-1, position[1]+1),
-                ]
+            (position[0], position[1]-1),
+            (position[0]+1, position[1]-1),
+            (position[0]+1, position[1]),
+            (position[0], position[1]+1),
+            (position[0]-1, position[1]+1),
+            (position[0]-1, position[1]),
+        ]
+        
+        #return [
+        #            (position[0], position[1]+2),
+        #            (position[0]+1, position[1]+1),
+        #            (position[0]+1, position[1]-1),
+        #            (position[0], position[1]-2),
+        #            (position[0]-1, position[1]-1),
+        #            (position[0]-1, position[1]+1),
+        #        ]
 class GameState:
 
     def __init__(self, num_players=2):

@@ -7,7 +7,7 @@ class Strategy:
     def formulate_turn(self, 
                   game_state:GameState, 
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        # Returns a tuple of (tile to place, (x,y) location)
+        # Returns a tuple of (tile to place, (q,r) location)
         raise NotImplemented()
     
     def pick_piece_to_pop(self,
@@ -26,7 +26,7 @@ class RandomStrategy(Strategy):
     def formulate_turn(self, 
                   game_state:GameState, 
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        # Returns a tuple of (tile to place, (x,y) location)
+        # Returns a tuple of (tile to place, (q,r) location)
         viable_moves = list()
 
         for tile in available_pieces:
@@ -59,7 +59,7 @@ class GreedyStrategy(Strategy):
     def formulate_turn(self, 
                   game_state:GameState, 
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        # Returns a tuple of (tile to place, (x,y) location)
+        # Returns a tuple of (tile to place, (q,r) location)
         maximum_move_score = 0
         maximum_move_piece = None
         maximum_move_position = None
