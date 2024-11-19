@@ -1,11 +1,10 @@
 TODO:
-* Tests - for simple tango game
-* Rotational coordinate systems
+* (x) Tests - for simple tango game
+* (x) Rotational coordinate systems
 * Simulation results
 * (x) Pop tile scoring and incorporate into greedy strategy
-* Tests for popping dynamics - scoring and multipop in particular
+* (x) Tests for popping dynamics - scoring and multipop in particular
 * Defensive strategy
 * Weighted tile value strategy
 * Game diagnostics
-* ...debugging... 
 * Docs
