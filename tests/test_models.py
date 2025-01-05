@@ -215,3 +215,26 @@ def test_score_pop_partial() -> None:
 
     assert game_state.score_pop((0,0), 0) == -3
     assert game_state.score_pop((0,0), 1) == 3
+
+def test_properly_detected_enclosure() -> None:
+    game_state = GameState()
+    
+    
+    #Place ring of tiles
+    ring = [(0,0), (1,-1), (2,-1), (3,-1),
+            (3, 0), (2, 1), (1, 1), (0, 1)]
+    for r in ring:
+        game_state.place_tile(
+            Tile([True, True, True, True, True, True], 0),
+            r
+        )
+    
+    assert game_state.is_enclosed((1, 0)) == True
+    assert game_state.is_enclosed((2, 0)) == True
+
+    assert game_state.is_enclosed((0, -1)) == False
+
+    with pytest.raises(Exception):
+        game_state.place_tile(
+            Tile([True, True, True, True, True, True], 0), 
+            (1,0))

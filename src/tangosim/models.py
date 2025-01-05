@@ -49,14 +49,6 @@ def get_bordering_positions(position:Tuple[int, int]) -> List[Tuple[int, int]]:
             (position[0]-1, position[1]),
         ]
         
-        #return [
-        #            (position[0], position[1]+2),
-        #            (position[0]+1, position[1]+1),
-        #            (position[0]+1, position[1]-1),
-        #            (position[0], position[1]-2),
-        #            (position[0]-1, position[1]-1),
-        #            (position[0]-1, position[1]+1),
-        #        ]
 class GameState:
 
     def __init__(self, num_players=2):
@@ -64,6 +56,34 @@ class GameState:
         self.available_positions = set()
         self.available_positions.add((0,0))
         self.tiles = dict()
+        self.min_coordinates = (0,0)
+        self.max_coordinates = (0,0)
+
+    def is_enclosed(self, position:Tuple[int, int], positions_checked=set()) -> bool:
+        if position in self.tiles:
+            raise Exception("Checking if occupied tile is enclosed")
+
+        # Do a recursive check on positions, with base case being 
+        # that the position is outside of the maximimum envelope of the 
+        # board
+
+        #print(f"Position {position} versus {self.min_coordinates} and {self.max_coordinates}")
+        if position[0] < self.min_coordinates[0] or \
+            position[1] < self.min_coordinates[1] or \
+                position[0] > self.max_coordinates[0] or \
+                    position[1] > self.max_coordinates[1]:
+                    return False
+
+        #print(f"Position {position} is inside bounds")
+        new_empty_bordering_positions = [x for x in get_bordering_positions(position) \
+            if x not in self.tiles and x not in positions_checked]
+            
+        if len(new_empty_bordering_positions) == 0:
+            return True
+            
+        positions_checked.add(position)
+        return all(map(lambda x: self.is_enclosed(x,positions_checked=positions_checked), \
+            new_empty_bordering_positions))
 
     def find_conflicting_tile_position(self, tile:Tile, position:Tuple[int, int]) -> Tuple[int, Tile]:
         # Returns tuple of (edge index, conflicting tile) if there is a conflict, None otherwise
@@ -92,6 +112,9 @@ class GameState:
 
         if position in self.tiles:
             raise Exception(f"Tile already placed at {position}")
+        
+        if self.is_enclosed(position):
+            raise Exception(f"Position {position} would be inside an enclosed area")
 
         # Check if bordering tiles satisfy tile marker constraint
         bordering_positions = get_bordering_positions(position)
@@ -109,11 +132,18 @@ class GameState:
         # calculate changes to available positions
         self.available_positions.remove(position)
 
+        #available_bordering_positions = \
+        #    [p for p in bordering_positions if p not in self.tiles and not(all(q in self.tiles for q in get_bordering_positions(p)))]
+
+        # Maybe this is right, and then we do not need the check below
         available_bordering_positions = \
-            [p for p in bordering_positions if p not in self.tiles and not(all(q in self.tiles for q in get_bordering_positions(p)))]
+            [p for p in bordering_positions if p not in self.tiles and not self.is_enclosed(p)]
+
 
         self.available_positions.update(available_bordering_positions)
         enclosed_positions = [x for x in self.available_positions if self.is_surrounded(x)]
+        #enclosed_positions = [x for x in self.available_positions if self.is_enclosed(x)]
+        
         list(map(self.available_positions.remove, enclosed_positions))
 
         # Check for popping condition
@@ -123,7 +153,19 @@ class GameState:
                 if self.is_surrounded(adj_position):
                     surrounded_positions.append(adj_position)
 
+        self._adjust_max_bounds(position)
         return surrounded_positions    
+
+    def _adjust_max_bounds(self, position:Tuple[int, int]) -> None:
+        if position[0] < self.min_coordinates[0]:
+            self.min_coordinates = (position[0], self.min_coordinates[1])
+        if position[1] < self.min_coordinates[1]:
+            self.min_coordinates = (self.min_coordinates[0], position[1])
+
+        if position[0] > self.max_coordinates[0]:
+            self.max_coordinates = (position[0], self.max_coordinates[1])
+        if position[1] > self.max_coordinates[1]:
+            self.max_coordinates = (self.max_coordinates[0], position[1])
 
     def is_surrounded(self, position:Tuple[int, int]) -> bool:
         bordering_positions = get_bordering_positions(position)

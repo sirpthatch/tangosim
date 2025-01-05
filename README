@@ -6,5 +6,7 @@ TODO:
 * (x) Tests for popping dynamics - scoring and multipop in particular
 * Defensive strategy
 * Weighted tile value strategy
-* Game diagnostics
 * Docs
+* (x) Detecting an enclosed position
+* Post play tile visualization
+* Game Diagnostics (avg number of turns, options evaluated per play, advantage of going first)
