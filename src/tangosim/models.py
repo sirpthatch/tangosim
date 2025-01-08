@@ -53,11 +53,17 @@ class GameState:
 
     def __init__(self, num_players=2):
         self.num_players = num_players
-        self.available_positions = set()
-        self.available_positions.add((0,0))
+        self._available_positions = set()
+        self._available_positions.add((0,0))
         self.tiles = dict()
-        self.min_coordinates = (0,0)
-        self.max_coordinates = (0,0)
+        self._min_coordinates = (0,0)
+        self._max_coordinates = (0,0)
+
+    def print_state(self) -> None:
+        print(f"Available Positions: {len(self._available_positions)} - {self._available_positions}")
+        print(f"Filtered Available Positions: {len(self.get_available_positions())} - {self.get_available_positions()}")
+        print(f"Max Coordinates: {self._max_coordinates}")
+        print(f"Min Coordinates: {self._min_coordinates}")
 
     def is_enclosed(self, position:Tuple[int, int], positions_checked=set()) -> bool:
         if position in self.tiles:
@@ -67,23 +73,31 @@ class GameState:
         # that the position is outside of the maximimum envelope of the 
         # board
 
-        #print(f"Position {position} versus {self.min_coordinates} and {self.max_coordinates}")
-        if position[0] < self.min_coordinates[0] or \
-            position[1] < self.min_coordinates[1] or \
-                position[0] > self.max_coordinates[0] or \
-                    position[1] > self.max_coordinates[1]:
+        if position[0] < self._min_coordinates[0] or \
+            position[1] < self._min_coordinates[1] or \
+                position[0] > self._max_coordinates[0] or \
+                    position[1] > self._max_coordinates[1]:
                     return False
 
-        #print(f"Position {position} is inside bounds")
         new_empty_bordering_positions = [x for x in get_bordering_positions(position) \
             if x not in self.tiles and x not in positions_checked]
             
         if len(new_empty_bordering_positions) == 0:
             return True
             
-        positions_checked.add(position)
-        return all(map(lambda x: self.is_enclosed(x,positions_checked=positions_checked), \
-            new_empty_bordering_positions))
+        new_positions = positions_checked.copy()
+        new_positions.add(position)
+
+        for new_position in new_empty_bordering_positions:
+            new_positions = positions_checked.copy()
+            new_positions.add(position)
+            if not self.is_enclosed(new_position,positions_checked=new_positions):
+                return False
+            
+        return True
+    
+        #return all(map(lambda x: self.is_enclosed(x,positions_checked=new_positions), \
+        #    new_empty_bordering_positions))
 
     def find_conflicting_tile_position(self, tile:Tile, position:Tuple[int, int]) -> Tuple[int, Tile]:
         # Returns tuple of (edge index, conflicting tile) if there is a conflict, None otherwise
@@ -104,16 +118,21 @@ class GameState:
         
         return None
  
+    def get_available_positions(self) -> List[Tuple[int, int]]:
+        return [x for x in self._available_positions if not self.is_enclosed(x)]
+    
     def place_tile(self, tile:Tile, position:Tuple[int, int]) -> List[Tuple[int, int]]:
         # Places the tile and returns list of positions that are surrounded
         # Check if spot is free and connected
-        if position not in self.available_positions:
-            raise Exception(f"Position {position} not in available positions: {self.available_positions}")
+        if position not in self._available_positions:
+            raise Exception(f"Position {position} not in available positions: {self._available_positions}")
 
         if position in self.tiles:
             raise Exception(f"Tile already placed at {position}")
         
         if self.is_enclosed(position):
+            print(f"Failing for {position}")
+            self.print_state()
             raise Exception(f"Position {position} would be inside an enclosed area")
 
         # Check if bordering tiles satisfy tile marker constraint
@@ -130,22 +149,25 @@ class GameState:
         self.tiles[position] = tile
         
         # calculate changes to available positions
-        self.available_positions.remove(position)
+        self._available_positions.remove(position)
 
         #available_bordering_positions = \
         #    [p for p in bordering_positions if p not in self.tiles and not(all(q in self.tiles for q in get_bordering_positions(p)))]
 
         # Maybe this is right, and then we do not need the check below
         available_bordering_positions = \
-            [p for p in bordering_positions if p not in self.tiles and not self.is_enclosed(p)]
+            [p for p in bordering_positions if p not in self.tiles]# and not self.is_enclosed(p)]
 
 
-        self.available_positions.update(available_bordering_positions)
-        enclosed_positions = [x for x in self.available_positions if self.is_surrounded(x)]
-        #enclosed_positions = [x for x in self.available_positions if self.is_enclosed(x)]
+        self._available_positions.update(available_bordering_positions)
+        positions_to_remove = list()
+        for x in self._available_positions:
+            if self.is_surrounded(x) or self.is_enclosed(x):
+                positions_to_remove.append(x)
+                
+        for x in positions_to_remove:
+            self._available_positions.remove(x)
         
-        list(map(self.available_positions.remove, enclosed_positions))
-
         # Check for popping condition
         surrounded_positions = []
         for adj_position in bordering_positions:
@@ -157,15 +179,15 @@ class GameState:
         return surrounded_positions    
 
     def _adjust_max_bounds(self, position:Tuple[int, int]) -> None:
-        if position[0] < self.min_coordinates[0]:
-            self.min_coordinates = (position[0], self.min_coordinates[1])
-        if position[1] < self.min_coordinates[1]:
-            self.min_coordinates = (self.min_coordinates[0], position[1])
+        if position[0] < self._min_coordinates[0]:
+            self._min_coordinates = (position[0]-1, self._min_coordinates[1])
+        if position[1] < self._min_coordinates[1]:
+            self._min_coordinates = (self._min_coordinates[0], position[1]-1)
 
-        if position[0] > self.max_coordinates[0]:
-            self.max_coordinates = (position[0], self.max_coordinates[1])
-        if position[1] > self.max_coordinates[1]:
-            self.max_coordinates = (self.max_coordinates[0], position[1])
+        if position[0] > self._max_coordinates[0]:
+            self._max_coordinates = (position[0]+1, self._max_coordinates[1])
+        if position[1] > self._max_coordinates[1]:
+            self._max_coordinates = (self._max_coordinates[0], position[1]+1)
 
     def is_surrounded(self, position:Tuple[int, int]) -> bool:
         bordering_positions = get_bordering_positions(position)
@@ -178,7 +200,7 @@ class GameState:
         return self.tiles.pop(position)
 
     def get_available_positions(self) -> Set[Tuple[int, int]]:
-        return self.available_positions
+        return self._available_positions
     
     def get_tiles(self) -> Dict[Tuple[int, int], Tile]:
         return self.tiles
@@ -199,7 +221,7 @@ class GameState:
         return scores
 
     def score_potential_move(self, tile:Tile, position:Tuple[int, int]) -> int:
-        if position not in self.available_positions:
+        if position not in self._available_positions:
             return None
         
         score = 0

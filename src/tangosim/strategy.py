@@ -4,7 +4,17 @@ from random import randint
 
 class Strategy:
 
+    def __init__(self):
+        self.turn_number = 0
+        self.turn_diagnostics = []
+
     def formulate_turn(self, 
+                  game_state:GameState, 
+                  available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
+        self.turn_number += 1
+        return self.formulate_turn_impl(game_state, available_pieces)
+    
+    def formulate_turn_impl(self, 
                   game_state:GameState, 
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
         # Returns a tuple of (tile to place, (q,r) location)
@@ -23,7 +33,7 @@ class RandomStrategy(Strategy):
         super().__init__()
         self.player = player
 
-    def formulate_turn(self, 
+    def formulate_turn_impl(self, 
                   game_state:GameState, 
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
         # Returns a tuple of (tile to place, (q,r) location)
@@ -31,13 +41,18 @@ class RandomStrategy(Strategy):
 
         for tile in available_pieces:
             rotational_projections = [tile.rotate(n) for n in range(0, 6)]
-            for position in game_state.available_positions:
+            for position in game_state.get_available_positions():
                 for projection in rotational_projections:
                     score = game_state.score_potential_move(projection, position)
                     if score != None:
                         viable_moves.append((projection, position))
                         
-        (piece, position) = viable_moves[randint(0, len(viable_moves)-1)] 
+        (piece, position) = viable_moves[randint(0, len(viable_moves)-1)]
+        diags = {
+            "turn": self.turn_number,
+            "moves_evaluated" : len(viable_moves)
+        }
+        self.turn_diagnostics.append(diags) 
         print(f"Player {self.player} Move {piece.pattern} to {position}")
         return (piece, position)
         
@@ -55,8 +70,8 @@ class GreedyStrategy(Strategy):
     def __init__(self, player:int):
         super().__init__()
         self.player = player
-
-    def formulate_turn(self, 
+        
+    def formulate_turn_impl(self, 
                   game_state:GameState, 
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
         # Returns a tuple of (tile to place, (q,r) location)
@@ -64,17 +79,24 @@ class GreedyStrategy(Strategy):
         maximum_move_piece = None
         maximum_move_position = None
 
+        evaluated_moves = 0
         for tile in available_pieces:
             rotational_projections = [tile.rotate(n) for n in range(0, 6)]
-            for position in game_state.available_positions:
+            for position in game_state.get_available_positions():
                 for projection in rotational_projections:
                     score = game_state.score_potential_move(projection, position)
                     if score != None and score >= maximum_move_score:
                         maximum_move_score = score
                         maximum_move_piece = projection
                         maximum_move_position = position
+                    evaluated_moves += 1
         
-        print(f"Player {self.player} Move {maximum_move_piece.pattern} to {maximum_move_position} for {maximum_move_score} points")
+        diags = {
+            "turn": self.turn_number,
+            "moves_evaluated" :evaluated_moves
+        }
+        self.turn_diagnostics.append(diags) 
+        #print(f"Player {self.player} Move {maximum_move_piece.pattern} to {maximum_move_position} for {maximum_move_score} points")
         return (maximum_move_piece, maximum_move_position)
         
     
@@ -90,5 +112,5 @@ class GreedyStrategy(Strategy):
                     maximum_pop_score = pop_score
                     maximum_pop = location
                         
-        print(f"Player {self.player} Popping {maximum_pop} for {maximum_pop_score} points")
+        #print(f"Player {self.player} Popping {maximum_pop} for {maximum_pop_score} points")
         return maximum_pop

@@ -120,7 +120,7 @@ def test_single_pop() -> None:
         Tile([True, True, True, True, True, True], 0), 
         bordering_positions[-1]) == [(0,0)]
     
-    assert (0,0) not in game_state.available_positions
+    assert (0,0) not in game_state.get_available_positions()
 
 
 def test_cannot_place_tile_in_center() -> None:
@@ -219,7 +219,6 @@ def test_score_pop_partial() -> None:
 def test_properly_detected_enclosure() -> None:
     game_state = GameState()
     
-    
     #Place ring of tiles
     ring = [(0,0), (1,-1), (2,-1), (3,-1),
             (3, 0), (2, 1), (1, 1), (0, 1)]
@@ -229,6 +228,7 @@ def test_properly_detected_enclosure() -> None:
             r
         )
     
+    print("Enclosure checks...")
     assert game_state.is_enclosed((1, 0)) == True
     assert game_state.is_enclosed((2, 0)) == True
 

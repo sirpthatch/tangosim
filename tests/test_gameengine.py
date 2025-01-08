@@ -13,7 +13,7 @@ def test_onepiece_game() -> None:
 
     game = SimpleTangoGame([player1_strategy, player2_strategy],
                            [player1_tiles, player2_tiles])
-    (gamestate, last_player) = game.play()
+    (gamestate, last_player, rounds) = game.play()
     assert last_player == 0
     assert gamestate.get_scores() == [0,0]
 
@@ -30,6 +30,6 @@ def test_twopiece_game() -> None:
         Tile([True, False, False, False, False, False], 1)])
     game = SimpleTangoGame([player1_strategy, player2_strategy],
                            [player1_tiles, player2_tiles])
-    (gamestate, last_player) = game.play()
+    (gamestate, last_player, rounds) = game.play()
     assert last_player == 0
     assert gamestate.get_scores() == [1,1]
