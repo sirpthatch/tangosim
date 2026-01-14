@@ -33,20 +33,20 @@ class RandomStrategy(Strategy):
         super().__init__()
         self.player = player
 
-    def formulate_turn_impl(self, 
-                  game_state:GameState, 
+    def formulate_turn_impl(self,
+                  game_state:GameState,
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
         # Returns a tuple of (tile to place, (q,r) location)
         viable_moves = list()
+        available_positions = list(game_state.get_available_positions())
 
         for tile in available_pieces:
-            rotational_projections = [tile.rotate(n) for n in range(0, 6)]
-            for position in game_state.get_available_positions():
-                for projection in rotational_projections:
+            for position in available_positions:
+                for projection in tile.unique_rotations:
                     score = game_state.score_potential_move(projection, position)
                     if score != None:
                         viable_moves.append((projection, position))
-                        
+
         (piece, position) = viable_moves[randint(0, len(viable_moves)-1)]
         diags = {
             "turn": self.turn_number,
@@ -71,19 +71,19 @@ class GreedyStrategy(Strategy):
         super().__init__()
         self.player = player
         
-    def formulate_turn_impl(self, 
-                  game_state:GameState, 
+    def formulate_turn_impl(self,
+                  game_state:GameState,
                   available_pieces:Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
         # Returns a tuple of (tile to place, (q,r) location)
         maximum_move_score = 0
         maximum_move_piece = None
         maximum_move_position = None
+        available_positions = list(game_state.get_available_positions())
 
         evaluated_moves = 0
         for tile in available_pieces:
-            rotational_projections = [tile.rotate(n) for n in range(0, 6)]
-            for position in game_state.get_available_positions():
-                for projection in rotational_projections:
+            for position in available_positions:
+                for projection in tile.unique_rotations:
                     score = game_state.score_potential_move(projection, position)
                     if score != None and score >= maximum_move_score:
                         maximum_move_score = score

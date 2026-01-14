@@ -20,14 +20,36 @@ class Tile:
         self.color = color
 
     def num_ticks(self) -> int:
-        count = 0
-        for x in self.pattern:
-            if x: count+=1
-        return count
-    
+        return sum(self.pattern)
+
     def rotate(self, steps=1):
         return Tile(self.pattern[-steps:]+self.pattern[:-steps], self.color, self.id)
-    
+
+    @property
+    def all_rotations(self) -> List['Tile']:
+        """Returns cached list of all 6 rotations of this tile."""
+        if not hasattr(self, '_all_rotations'):
+            self._all_rotations = [self.rotate(n) for n in range(6)]
+        return self._all_rotations
+
+    @property
+    def unique_rotations(self) -> List['Tile']:
+        """Returns cached list of rotationally unique variants of this tile.
+
+        For symmetric tiles (e.g., all-true, all-false, alternating), this
+        returns fewer than 6 rotations, avoiding redundant evaluations.
+        """
+        if not hasattr(self, '_unique_rotations'):
+            seen_patterns = []
+            unique = []
+            for rotation in self.all_rotations:
+                pattern_tuple = tuple(rotation.pattern)
+                if pattern_tuple not in seen_patterns:
+                    seen_patterns.append(pattern_tuple)
+                    unique.append(rotation)
+            self._unique_rotations = unique
+        return self._unique_rotations
+
     def is_rotationally_equal(self, tile:'Tile') -> bool:
         if tile.color != self.color:
             return False
@@ -64,41 +86,33 @@ class GameState:
         print(f"Filtered Available Positions: {len(self.get_available_positions())} - {self.get_available_positions()}")
         print(f"Max Coordinates: {self._max_coordinates}")
         print(f"Min Coordinates: {self._min_coordinates}")
-
-    def is_enclosed(self, position:Tuple[int, int], positions_checked=set()) -> bool:
-        if position in self.tiles:
-            raise Exception("Checking if occupied tile is enclosed")
-
-        # Do a recursive check on positions, with base case being 
-        # that the position is outside of the maximimum envelope of the 
-        # board
-
-        if position[0] < self._min_coordinates[0] or \
-            position[1] < self._min_coordinates[1] or \
-                position[0] > self._max_coordinates[0] or \
-                    position[1] > self._max_coordinates[1]:
-                    return False
-
-        new_empty_bordering_positions = [x for x in get_bordering_positions(position) \
-            if x not in self.tiles and x not in positions_checked]
+    
+    def is_enclosed(self, position, positions_checked=None):
+        if positions_checked is None:
+            positions_checked = set()
+        
+        stack = [position]
+        visited = positions_checked.copy()
+        
+        while stack:
+            pos = stack.pop()
+            if pos in visited:
+                continue
+            visited.add(pos)
             
-        if len(new_empty_bordering_positions) == 0:
-            return True
+            # Check if outside bounds (not enclosed)
+            if pos[0] < self._min_coordinates[0] or \
+                pos[1] < self._min_coordinates[1] or \
+                    pos[0] > self._max_coordinates[0] or \
+                        pos[1] > self._max_coordinates[1]:
+                        return False
             
-        new_positions = positions_checked.copy()
-        new_positions.add(position)
-
-        for new_position in new_empty_bordering_positions:
-            new_positions = positions_checked.copy()
-            new_positions.add(position)
-            if not self.is_enclosed(new_position,positions_checked=new_positions):
-                return False
-            
+            for neighbor in get_bordering_positions(pos):
+                if neighbor not in self.tiles and neighbor not in visited:
+                    stack.append(neighbor)
+        
         return True
     
-        #return all(map(lambda x: self.is_enclosed(x,positions_checked=new_positions), \
-        #    new_empty_bordering_positions))
-
     def find_conflicting_tile_position(self, tile:Tile, position:Tuple[int, int]) -> Tuple[int, Tile]:
         # Returns tuple of (edge index, conflicting tile) if there is a conflict, None otherwise
         bordering_positions = get_bordering_positions(position)
@@ -118,9 +132,6 @@ class GameState:
         
         return None
  
-    def get_available_positions(self) -> List[Tuple[int, int]]:
-        return [x for x in self._available_positions if not self.is_enclosed(x)]
-    
     def place_tile(self, tile:Tile, position:Tuple[int, int]) -> List[Tuple[int, int]]:
         # Places the tile and returns list of positions that are surrounded
         # Check if spot is free and connected
