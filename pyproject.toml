@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tangosim"
+version = "0.1.0"
+description = "A Tango game simulator with various strategies"
+readme = "README"
+requires-python = ">=3.8"
+authors = [
+    {name = "Thatcher"}
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pylint>=2.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages]
+find = {where = ["src"], include = ["tangosim*"]}
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.pylint.MASTER]
+init-hook = "from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))"

@@ -1,0 +1,2 @@
+# Production dependencies
+# Currently this project only uses Python standard library
