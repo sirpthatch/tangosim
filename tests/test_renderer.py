@@ -117,8 +117,10 @@ class TestHexagonGeometry:
         for edge_idx in range(6):
             triangle = _edge_triangle(corners, center, edge_idx)
             # First two points should be on the edge line, slightly inset from corners
-            start_idx = (edge_idx + 5) % 6
-            end_idx = edge_idx
+            # The corner mapping uses offset 4 to align with axial coordinates
+            corner_offset = 4
+            start_idx = (edge_idx + corner_offset) % 6
+            end_idx = (edge_idx + corner_offset + 1) % 6
             # Points should be close to but not exactly at corners
             start_dist = math.sqrt((triangle[0][0] - corners[start_idx][0])**2 +
                                    (triangle[0][1] - corners[start_idx][1])**2)

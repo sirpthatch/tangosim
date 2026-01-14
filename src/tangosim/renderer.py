@@ -42,9 +42,9 @@ def _hexagon_corners(center_x: float, center_y: float, size: float) -> List[Tupl
     return corners
 
 
-def _edge_triangle(corners: List[Tuple[float, float]], 
-                   center: Tuple[float, float], 
-                   edge_index: int, 
+def _edge_triangle(corners: List[Tuple[float, float]],
+                   center: Tuple[float, float],
+                   edge_index: int,
                    inset: float = 0.05) -> List[Tuple[float, float]]:
     """Get triangle points for a filled edge (0-5).
 
@@ -57,16 +57,30 @@ def _edge_triangle(corners: List[Tuple[float, float]],
         edge_index: Which edge (0-5, clockwise from top)
         inset: Fraction to inset from full size (0.05 = 5% smaller on each edge)
 
-    Edge mapping (clockwise from top):
-    - Edge 0 (top): corners[5], corners[0], center
-    - Edge 1 (top-right): corners[0], corners[1], center
-    - Edge 2 (bottom-right): corners[1], corners[2], center
-    - Edge 3 (bottom): corners[2], corners[3], center
-    - Edge 4 (bottom-left): corners[3], corners[4], center
-    - Edge 5 (top-left): corners[4], corners[5], center
+    The game model uses axial coordinates where edges map to neighbors as:
+    - Edge 0: top neighbor (q, r-1) -> faces -120 degrees
+    - Edge 1: top-right neighbor (q+1, r-1) -> faces -60 degrees
+    - Edge 2: bottom-right neighbor (q+1, r) -> faces 0 degrees
+    - Edge 3: bottom neighbor (q, r+1) -> faces 60 degrees
+    - Edge 4: bottom-left neighbor (q-1, r+1) -> faces 120 degrees
+    - Edge 5: top-left neighbor (q-1, r) -> faces 180 degrees
+
+    The hexagon corners are generated starting at -30 degrees:
+    - Corner 0: -30 degrees (top-right)
+    - Corner 1: 30 degrees (right)
+    - Corner 2: 90 degrees (bottom-right)
+    - Corner 3: 150 degrees (bottom-left)
+    - Corner 4: 210 degrees (left)
+    - Corner 5: 270 degrees (top-left)
+
+    So edge 0 (facing -120°/top) uses corners 4 and 5 (the top-left edge of the hex).
     """
-    start_idx = (edge_index + 5) % 6
-    end_idx = edge_index
+    # Map game edge index to renderer corner indices
+    # Game edge 0 faces -120° (top), which is between corners 4 (210°) and 5 (270°)
+    # Each subsequent game edge is 60° clockwise
+    corner_offset = 4  # Corner index for the start of game edge 0
+    start_idx = (edge_index + corner_offset) % 6
+    end_idx = (edge_index + corner_offset + 1) % 6
 
     start_corner = corners[start_idx]
     end_corner = corners[end_idx]
