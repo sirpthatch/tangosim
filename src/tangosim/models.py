@@ -207,8 +207,86 @@ class GameState:
     def pop_piece(self, position:Tuple[int, int]) -> Tile:
         if position not in self.tiles:
             raise Exception(f"Attempting to pop a location that has no tile:{position}")
-        
+
         return self.tiles.pop(position)
+
+    def remove_tile(self, position: Tuple[int, int]) -> Tile:
+        """Remove a tile from the board (for moving in advanced mode).
+
+        Unlike pop_piece, this also updates available positions.
+
+        Returns:
+            The removed tile
+        """
+        if position not in self.tiles:
+            raise Exception(f"No tile at position {position} to remove")
+
+        tile = self.tiles.pop(position)
+
+        # The removed position becomes available again
+        self._available_positions.add(position)
+
+        # Check if any neighbors should be removed from available positions
+        # (they may now be disconnected or the board topology changed)
+        bordering_positions = get_bordering_positions(position)
+        for neighbor in bordering_positions:
+            if neighbor in self._available_positions:
+                # Re-check if this position is still valid
+                if self.is_surrounded(neighbor) or self.is_enclosed(neighbor):
+                    self._available_positions.discard(neighbor)
+
+        return tile
+
+    def place_tile_for_move(self, tile: Tile, position: Tuple[int, int]) -> List[Tuple[int, int]]:
+        """Place a tile during a move action (advanced mode).
+
+        This is similar to place_tile but allows placement in enclosed areas
+        (as long as the position is not fully surrounded).
+
+        Returns:
+            List of positions that became surrounded after placement
+        """
+        if position in self.tiles:
+            raise Exception(f"Tile already placed at {position}")
+
+        # Check if bordering tiles satisfy tile marker constraint
+        bordering_positions = get_bordering_positions(position)
+
+        possible_conflict = self.find_conflicting_tile_position(tile, position)
+        if possible_conflict is not None:
+            (idx, conflicting_tile) = possible_conflict
+            raise Exception(f"Tile markers do not line up: {tile.pattern} and {conflicting_tile.pattern} @ border {idx}")
+
+        if all([p in self.tiles for p in bordering_positions]):
+            raise Exception("Cannot place tile there, it would be surrounded")
+
+        self.tiles[position] = tile
+
+        # Update available positions
+        if position in self._available_positions:
+            self._available_positions.remove(position)
+
+        available_bordering_positions = \
+            [p for p in bordering_positions if p not in self.tiles]
+
+        self._available_positions.update(available_bordering_positions)
+        positions_to_remove = list()
+        for x in self._available_positions:
+            if self.is_surrounded(x) or self.is_enclosed(x):
+                positions_to_remove.append(x)
+
+        for x in positions_to_remove:
+            self._available_positions.remove(x)
+
+        # Check for popping condition
+        surrounded_positions = []
+        for adj_position in bordering_positions:
+            if adj_position in self.tiles:
+                if self.is_surrounded(adj_position):
+                    surrounded_positions.append(adj_position)
+
+        self._adjust_max_bounds(position)
+        return surrounded_positions
 
     def get_available_positions(self) -> Set[Tuple[int, int]]:
         return self._available_positions
