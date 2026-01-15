@@ -416,3 +416,35 @@ class GameState:
                 else:
                     score += 1
         return score
+
+    def would_move_disconnect_board(self, from_pos: Tuple[int, int], to_pos: Tuple[int, int]) -> bool:
+        """Check if moving tile from from_pos to to_pos would disconnect the board.
+
+        Args:
+            from_pos: Current position of tile being moved
+            to_pos: Proposed destination position
+
+        Returns:
+            True if the move would create disconnected components, False otherwise
+        """
+        # Simulate the board state after the move
+        positions_after_move = {pos for pos in self.tiles.keys() if pos != from_pos}
+        positions_after_move.add(to_pos)
+
+        if len(positions_after_move) <= 1:
+            return False
+
+        # BFS from any tile position to check connectivity
+        start = next(iter(positions_after_move))
+        visited = {start}
+        queue = [start]
+
+        while queue:
+            current = queue.pop(0)
+            for neighbor in get_bordering_positions(current):
+                if neighbor in positions_after_move and neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+
+        # Board stays connected if we can reach all positions
+        return len(visited) != len(positions_after_move)

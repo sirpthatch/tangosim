@@ -167,6 +167,10 @@ class RandomStrategy(Strategy):
     def _is_valid_move_destination(self, game_state: GameState, position: Tuple[int, int],
                                    tile: Tile, from_pos: Tuple[int, int]) -> bool:
         """Check if a position is a valid move destination."""
+        # Check if move would disconnect the board
+        if game_state.would_move_disconnect_board(from_pos, position):
+            return False
+
         # Can't be surrounded (all 6 neighbors occupied)
         bordering = get_bordering_positions(position)
         occupied_neighbors = sum(1 for p in bordering if p in game_state.tiles and p != from_pos)
@@ -299,6 +303,10 @@ class GreedyStrategy(Strategy):
     def _is_valid_move_destination(self, game_state: GameState, position: Tuple[int, int],
                                    tile: Tile, from_pos: Tuple[int, int]) -> bool:
         """Check if a position is a valid move destination."""
+        # Check if move would disconnect the board
+        if game_state.would_move_disconnect_board(from_pos, position):
+            return False
+
         bordering = get_bordering_positions(position)
         occupied_neighbors = sum(1 for p in bordering if p in game_state.tiles and p != from_pos)
         if occupied_neighbors == 6:
