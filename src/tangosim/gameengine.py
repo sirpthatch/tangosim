@@ -1,5 +1,5 @@
 from typing import Set, Tuple, List, Optional
-from tangosim.models import GameState, Tile, get_bordering_positions
+from tangosim.models import GameState, Tile, TangoAction, ActionType, get_bordering_positions
 from tangosim.strategy import Strategy
 
 
@@ -36,6 +36,7 @@ class TangoGame:
             TangoGame._init_gamepieces(n) for n in range(len(players))
         ]
         self.gamestate = GameState()
+        self.action_history: List[TangoAction] = []
 
     def play(self, max_rounds: int = 1000) -> Tuple[GameState, int, int]:
         """Play the game to completion.
@@ -60,8 +61,12 @@ class TangoGame:
 
         return (self.gamestate, active_player_idx, round_num)
 
-    def _execute_turn(self, player_idx: int) -> None:
-        """Execute a single turn for the given player. Override in subclasses."""
+    def _execute_turn(self, player_idx: int) -> Optional[TangoAction]:
+        """Execute a single turn for the given player. Override in subclasses.
+
+        Returns:
+            The TangoAction that was executed, or None if turn was skipped
+        """
         raise NotImplementedError("Subclasses must implement _execute_turn")
 
     def is_game_over(self, whose_turn: int) -> bool:
@@ -98,17 +103,40 @@ class TangoGame:
         # Handle any pops
         self._handle_pops(player_idx, surrounded_tiles)
 
+    def _execute_action(self, action: TangoAction) -> None:
+        """Execute a TangoAction on the game state."""
+        action.validate()
+
+        if action.action_type == ActionType.PLACE:
+            self._place_tile_and_update(action.player, action.tile, action.destination)
+        elif action.action_type == ActionType.MOVE:
+            self._move_tile(action.player, action.origin, action.destination, action.tile)
+        self.action_history.append(action)
+
+    def _move_tile(self, player_idx: int, from_pos: Tuple[int, int],
+                   to_pos: Tuple[int, int], rotated_tile: Tile) -> None:
+        """Move a tile from one position to another."""
+        # Remove tile from old position
+        self.gamestate.remove_tile(from_pos)
+
+        # Place at new position (this handles constraint checking)
+        surrounded_tiles = self.gamestate.place_tile_for_move(rotated_tile, to_pos)
+
+        # Handle any pops
+        self._handle_pops(player_idx, surrounded_tiles)
+
 
 class SimpleTangoGame(TangoGame):
     """Simple Tango game - players can only place new tiles from their hand."""
 
-    def _execute_turn(self, player_idx: int) -> None:
+    def _execute_turn(self, player_idx: int) -> Optional[TangoAction]:
         """Execute a simple turn: place a tile from hand."""
         strategy = self.players[player_idx]
         available_tiles = self.player_tiles[player_idx]
 
-        (tile_to_place, location) = strategy.formulate_turn(self.gamestate, available_tiles)
-        self._place_tile_and_update(player_idx, tile_to_place, location)
+        action = strategy.formulate_action(self.gamestate, available_tiles, player_idx)
+        self._execute_action(action)
+        return action
 
 
 class AdvancedTangoGame(TangoGame):
@@ -122,38 +150,20 @@ class AdvancedTangoGame(TangoGame):
     - Game ends when a player has no tiles AND has the most points
     """
 
-    def _execute_turn(self, player_idx: int) -> None:
+    def _execute_turn(self, player_idx: int) -> Optional[TangoAction]:
         """Execute an advanced turn: place a tile OR move an existing tile."""
         strategy = self.players[player_idx]
         available_tiles = self.player_tiles[player_idx]
 
-        # First, check if strategy wants to move an existing tile
-        move_action = strategy.formulate_move(
-            self.gamestate,
-            available_tiles,
-            player_idx
-        )
+        action = strategy.formulate_action(self.gamestate, available_tiles, player_idx)
 
-        if move_action is not None:
-            (from_pos, to_pos, rotated_tile) = move_action
-            self._move_tile(player_idx, from_pos, to_pos, rotated_tile)
-        elif len(available_tiles) > 0:
-            # Fall back to placing a new tile (only if player has tiles)
-            (tile_to_place, location) = strategy.formulate_turn(self.gamestate, available_tiles)
-            self._place_tile_and_update(player_idx, tile_to_place, location)
-        # If no tiles and no move action, turn is skipped (player waits for opponent)
+        # Validate the action makes sense for current game state
+        if action.action_type == ActionType.PLACE and len(available_tiles) == 0:
+            # Can't place if no tiles - skip turn
+            return None
 
-    def _move_tile(self, player_idx: int, from_pos: Tuple[int, int],
-                   to_pos: Tuple[int, int], rotated_tile: Tile) -> None:
-        """Move a tile from one position to another."""
-        # Remove tile from old position
-        self.gamestate.remove_tile(from_pos)
-
-        # Place at new position (this handles constraint checking)
-        surrounded_tiles = self.gamestate.place_tile_for_move(rotated_tile, to_pos)
-
-        # Handle any pops
-        self._handle_pops(player_idx, surrounded_tiles)
+        self._execute_action(action)
+        return action
 
     def is_game_over(self, whose_turn: int) -> bool:
         """Game ends when a player has no tiles AND has the highest score."""

@@ -1,5 +1,5 @@
-from tangosim.models import Tile, GameState, get_bordering_positions
-from typing import Set, Tuple, List, Optional
+from tangosim.models import Tile, GameState, TangoAction, ActionType, get_bordering_positions
+from typing import Set, Tuple, List
 from random import randint
 
 
@@ -9,23 +9,11 @@ class Strategy:
         self.turn_number = 0
         self.turn_diagnostics = []
 
-    def formulate_turn(self,
-                  game_state: GameState,
-                  available_pieces: Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        self.turn_number += 1
-        return self.formulate_turn_impl(game_state, available_pieces)
-
-    def formulate_turn_impl(self,
-                  game_state: GameState,
-                  available_pieces: Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        # Returns a tuple of (tile to place, (q,r) location)
-        raise NotImplementedError()
-
-    def formulate_move(self,
-                       game_state: GameState,
-                       available_pieces: Set[Tile],
-                       player_idx: int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int], Tile]]:
-        """Formulate a tile move action for advanced mode.
+    def formulate_action(self,
+                         game_state: GameState,
+                         available_pieces: Set[Tile],
+                         player_idx: int) -> TangoAction:
+        """Formulate the action for this turn.
 
         Args:
             game_state: Current game state
@@ -33,26 +21,31 @@ class Strategy:
             player_idx: The player's index (color)
 
         Returns:
-            None to place a new tile instead, or a tuple of:
-            (from_position, to_position, rotated_tile)
+            TangoAction with either PLACE or MOVE action type
         """
-        return self.formulate_move_impl(game_state, available_pieces, player_idx)
+        self.turn_number += 1
+        return self.formulate_action_impl(game_state, available_pieces, player_idx)
 
-    def formulate_move_impl(self,
-                            game_state: GameState,
-                            available_pieces: Set[Tile],
-                            player_idx: int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int], Tile]]:
-        """Override this in subclasses to implement move logic.
+    def formulate_action_impl(self,
+                              game_state: GameState,
+                              available_pieces: Set[Tile],
+                              player_idx: int) -> TangoAction:
+        """Override this in subclasses to implement action logic.
 
-        Default implementation returns None (always place new tiles).
+        Returns:
+            TangoAction for this turn
         """
-        return None
+        raise NotImplementedError()
 
     def pick_piece_to_pop(self,
                           game_state: GameState,
                           available_pieces: Set[Tile],
                           possible_pop_locations: List[Tuple[int, int]]) -> Tuple[int, int]:
-        # Returns the location to pop
+        """Select which piece to pop when multiple options exist.
+
+        Returns:
+            The (q, r) location to pop
+        """
         raise NotImplementedError()
 
 
@@ -62,11 +55,25 @@ class RandomStrategy(Strategy):
         super().__init__()
         self.player = player
 
-    def formulate_turn_impl(self,
-                  game_state: GameState,
-                  available_pieces: Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        # Returns a tuple of (tile to place, (q,r) location)
-        viable_moves = list()
+    def formulate_action_impl(self,
+                              game_state: GameState,
+                              available_pieces: Set[Tile],
+                              player_idx: int) -> TangoAction:
+        """Randomly choose between placing a new tile or moving an existing one."""
+        # Try to move an existing tile (50% chance if possible)
+        move_action = self._try_formulate_move(game_state, player_idx)
+        if move_action is not None:
+            return move_action
+
+        # Place a new tile
+        return self._formulate_placement(game_state, available_pieces, player_idx)
+
+    def _formulate_placement(self,
+                             game_state: GameState,
+                             available_pieces: Set[Tile],
+                             player_idx: int) -> TangoAction:
+        """Find a random valid placement."""
+        viable_moves = []
         available_positions = list(game_state.get_available_positions())
 
         for tile in available_pieces:
@@ -76,20 +83,25 @@ class RandomStrategy(Strategy):
                     if score is not None:
                         viable_moves.append((projection, position))
 
-        (piece, position) = viable_moves[randint(0, len(viable_moves)-1)]
+        (piece, position) = viable_moves[randint(0, len(viable_moves) - 1)]
         diags = {
             "turn": self.turn_number,
             "moves_evaluated": len(viable_moves)
         }
         self.turn_diagnostics.append(diags)
-        print(f"Player {self.player} Move {piece.pattern} to {position}")
-        return (piece, position)
+        print(f"Player {self.player} Place {piece.pattern} to {position}")
 
-    def formulate_move_impl(self,
+        return TangoAction(
+            action_type=ActionType.PLACE,
+            tile=piece,
+            player=player_idx,
+            destination=position
+        )
+
+    def _try_formulate_move(self,
                             game_state: GameState,
-                            available_pieces: Set[Tile],
-                            player_idx: int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int], Tile]]:
-        """Randomly decide whether to move an existing tile or place a new one."""
+                            player_idx: int) -> TangoAction:
+        """Try to formulate a move action. Returns None if no move or randomly choosing not to move."""
         # Get all player's tiles on the board that can move
         movable_tiles = []
         for pos, tile in game_state.tiles.items():
@@ -99,7 +111,7 @@ class RandomStrategy(Strategy):
                     movable_tiles.append((pos, tile, move_range))
 
         if not movable_tiles:
-            return None  # No tiles can move, place a new one
+            return None  # No tiles can move
 
         # 50% chance to try moving instead of placing
         if randint(0, 1) == 0:
@@ -117,7 +129,14 @@ class RandomStrategy(Strategy):
         # Pick random destination and rotation
         to_pos, rotated_tile = valid_moves[randint(0, len(valid_moves) - 1)]
         print(f"Player {self.player} Moving tile from {from_pos} to {to_pos}")
-        return (from_pos, to_pos, rotated_tile)
+
+        return TangoAction(
+            action_type=ActionType.MOVE,
+            tile=rotated_tile,
+            player=player_idx,
+            destination=to_pos,
+            origin=from_pos
+        )
 
     def _get_valid_move_destinations(self, game_state: GameState, from_pos: Tuple[int, int],
                                      tile: Tile, max_distance: int) -> List[Tuple[Tuple[int, int], Tile]]:
@@ -168,7 +187,7 @@ class RandomStrategy(Strategy):
                           game_state: GameState,
                           available_pieces: Set[Tile],
                           possible_pop_locations: List[Tuple[int, int]]) -> Tuple[int, int]:
-        pop_location = possible_pop_locations[randint(0, len(possible_pop_locations)-1)]
+        pop_location = possible_pop_locations[randint(0, len(possible_pop_locations) - 1)]
         print(f"Player {self.player} Popping {pop_location}")
         return pop_location
 
@@ -179,13 +198,15 @@ class GreedyStrategy(Strategy):
         super().__init__()
         self.player = player
 
-    def formulate_turn_impl(self,
-                  game_state: GameState,
-                  available_pieces: Set[Tile]) -> Tuple[Tile, Tuple[int, int]]:
-        # Returns a tuple of (tile to place, (q,r) location)
-        maximum_move_score = 0
-        maximum_move_piece = None
-        maximum_move_position = None
+    def formulate_action_impl(self,
+                              game_state: GameState,
+                              available_pieces: Set[Tile],
+                              player_idx: int) -> TangoAction:
+        """Choose the action (place or move) that maximizes score."""
+        # Find the best placement
+        best_place_score = -1
+        best_place_tile = None
+        best_place_position = None
         available_positions = list(game_state.get_available_positions())
 
         evaluated_moves = 0
@@ -193,10 +214,10 @@ class GreedyStrategy(Strategy):
             for position in available_positions:
                 for projection in tile.unique_rotations:
                     score = game_state.score_potential_move(projection, position)
-                    if score is not None and score >= maximum_move_score:
-                        maximum_move_score = score
-                        maximum_move_piece = projection
-                        maximum_move_position = position
+                    if score is not None and score > best_place_score:
+                        best_place_score = score
+                        best_place_tile = projection
+                        best_place_position = position
                     evaluated_moves += 1
 
         diags = {
@@ -204,26 +225,28 @@ class GreedyStrategy(Strategy):
             "moves_evaluated": evaluated_moves
         }
         self.turn_diagnostics.append(diags)
-        return (maximum_move_piece, maximum_move_position)
 
-    def formulate_move_impl(self,
-                            game_state: GameState,
-                            available_pieces: Set[Tile],
-                            player_idx: int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int], Tile]]:
-        """Evaluate all possible moves and return the best one if it beats placing a new tile."""
-        # First, find the best placement score
-        best_place_score = 0
-        available_positions = list(game_state.get_available_positions())
-        for tile in available_pieces:
-            for position in available_positions:
-                for projection in tile.unique_rotations:
-                    score = game_state.score_potential_move(projection, position)
-                    if score is not None and score > best_place_score:
-                        best_place_score = score
+        # Find the best move (only if it beats placing)
+        best_move_action = self._find_best_move(game_state, player_idx, best_place_score)
 
-        # Now evaluate all possible moves
+        if best_move_action is not None:
+            return best_move_action
+
+        # Return placement action
+        return TangoAction(
+            action_type=ActionType.PLACE,
+            tile=best_place_tile,
+            player=player_idx,
+            destination=best_place_position
+        )
+
+    def _find_best_move(self,
+                        game_state: GameState,
+                        player_idx: int,
+                        score_to_beat: int) -> TangoAction:
+        """Find the best move action if it beats the score_to_beat. Returns None otherwise."""
         best_move = None
-        best_move_score = best_place_score  # Only move if it's better than placing
+        best_move_score = score_to_beat
 
         for pos, tile in game_state.tiles.items():
             if tile.color != player_idx:
@@ -240,7 +263,13 @@ class GreedyStrategy(Strategy):
                 score = self._score_move(game_state, pos, to_pos, rotated_tile)
                 if score > best_move_score:
                     best_move_score = score
-                    best_move = (pos, to_pos, rotated_tile)
+                    best_move = TangoAction(
+                        action_type=ActionType.MOVE,
+                        tile=rotated_tile,
+                        player=player_idx,
+                        destination=to_pos,
+                        origin=pos
+                    )
 
         return best_move
 

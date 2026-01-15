@@ -1,0 +1,64 @@
+{
+  "num_games": 1000,
+  "wins": [
+    1000,
+    0
+  ],
+  "ties": 0,
+  "win_percentages": [
+    100.0,
+    0.0
+  ],
+  "score_distributions": [
+    {
+      "mean": 14.154,
+      "std": 1.7656164366592766,
+      "min": 6.0,
+      "max": 18.0,
+      "median": 14.0,
+      "count": 1000
+    },
+    {
+      "mean": 0.996,
+      "std": 1.149480450162292,
+      "min": 0.0,
+      "max": 7.0,
+      "median": 1.0,
+      "count": 1000
+    }
+  ],
+  "score_gap_distribution": {
+    "mean": 13.158,
+    "std": 2.0477375879807522,
+    "min": 6.0,
+    "max": 18.0,
+    "median": 13.0,
+    "count": 1000
+  },
+  "rounds_distribution": {
+    "mean": 158.336,
+    "std": 318.0012262301576,
+    "min": 26.0,
+    "max": 1000.0,
+    "median": 28.0,
+    "count": 1000
+  },
+  "neighbor_affinity_distributions": [
+    {
+      "mean": 0.9252875384806929,
+      "std": 0.06471502076750965,
+      "min": 0.6511627906976745,
+      "max": 1.0,
+      "median": 0.9333333333333333,
+      "count": 1000
+    },
+    {
+      "mean": 0.4358600411091877,
+      "std": 0.3238011860871248,
+      "min": 0.0,
+      "max": 1.0,
+      "median": 0.5,
+      "count": 1000
+    }
+  ]
+}

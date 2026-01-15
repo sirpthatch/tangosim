@@ -1,15 +1,18 @@
-from typing import List, Tuple, Dict, Set
+from typing import List, Tuple, Dict, Set, Optional, Any
 import itertools
+from dataclasses import dataclass
+from enum import Enum, auto
+
 
 ## Some Notes:
 ## * Tile positions are using an axial coordinate system, defined here: https://www.redblobgames.com/grids/hexagons/#coordinates
 
 def get_marker_idx(position: int) -> int:
     return (position + 3) % 6
-    
+
 class Tile:
     inc_id = itertools.count()
-    def __init__(self, 
+    def __init__(self,
                  pattern: List[bool], # 6 sides rotating clockwise from top, true if colored
                  color:int,
                  index = None) -> None:
@@ -18,6 +21,19 @@ class Tile:
         self.id = index if index else next(Tile.inc_id)
         self.pattern = pattern
         self.color = color
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize tile to dictionary for JSON export."""
+        return {
+            'pattern': self.pattern,
+            'color': self.color,
+            'id': self.id
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Tile':
+        """Deserialize tile from dictionary."""
+        return cls(data['pattern'], data['color'], data.get('id'))
 
     def num_ticks(self) -> int:
         return sum(self.pattern)
@@ -70,6 +86,48 @@ def get_bordering_positions(position:Tuple[int, int]) -> List[Tuple[int, int]]:
             (position[0]-1, position[1]+1),
             (position[0]-1, position[1]),
         ]
+
+class ActionType(Enum):
+    PLACE = auto()
+    MOVE = auto()
+
+@dataclass
+class TangoAction:
+    """Data model for the action on a particular turn"""
+    action_type: ActionType
+    tile: Tile
+    player: int
+    destination: Tuple[int, int]
+    origin: Optional[Tuple[int, int]] = None  # Only used if it is a move
+
+    def validate(self) -> None:
+        """Make sure that the action is valid."""
+        if self.action_type == ActionType.MOVE:
+            assert self.origin is not None, "MOVE action requires origin"
+        else:
+            assert self.origin is None, "PLACE action should not have origin"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize action to dictionary for JSON export."""
+        return {
+            'action_type': self.action_type.name,
+            'tile': self.tile.to_dict(),
+            'player': self.player,
+            'destination': list(self.destination),
+            'origin': list(self.origin) if self.origin else None
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TangoAction':
+        """Deserialize action from dictionary."""
+        return cls(
+            action_type=ActionType[data['action_type']],
+            tile=Tile.from_dict(data['tile']),
+            player=data['player'],
+            destination=tuple(data['destination']),
+            origin=tuple(data['origin']) if data['origin'] else None
+        )
+    
         
 class GameState:
 

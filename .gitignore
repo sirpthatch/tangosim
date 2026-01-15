@@ -18,6 +18,7 @@ ENV/
 .coverage
 htmlcov/
 .tox/
+output/
 
 # Distribution / packaging
 dist/

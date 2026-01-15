@@ -1,17 +1,19 @@
 TODO:
 * (x) Tests - for simple tango game
 * (x) Rotational coordinate systems
-* Simulation results
+* (x) Simulation results
 * (x) Pop tile scoring and incorporate into greedy strategy
 * (x) Tests for popping dynamics - scoring and multipop in particular
 * (x) Move dynamics
 * (x) Way to render the outcome of a game
+* Fix constraint around not allowing moves that segment the board
+
+Nice to Have:
 * Way to render a gamboard state and select the next move
 * Way to allow for interactive two player game
 * Way to allow for computer versus player configurability in game
 * Way to allow for online game
 * Defensive strategy
 * Weighted tile value strategy
-* Docs
 * (x) Detecting an enclosed position
 * Game Diagnostics (avg number of turns, options evaluated per play, advantage of going first)
